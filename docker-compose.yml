@@ -1,0 +1,61 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      NEWGEO_STORE_PATH: /app/.data/newgeo-store.json
+      NEWGEO_EXPORT_DIR: /app/exports
+    volumes:
+      - newgeo_data:/app/.data
+      - newgeo_exports:/app/exports
+    ports:
+      - "8000:8000"
+
+  worker:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    environment:
+      NEWGEO_STORE_PATH: /app/.data/newgeo-store.json
+      NEWGEO_EXPORT_DIR: /app/exports
+      NEWGEO_POLL_INTERVAL_SECONDS: 5
+    volumes:
+      - newgeo_data:/app/.data
+      - newgeo_exports:/app/exports
+    depends_on:
+      - api
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: newgeo
+      POSTGRES_USER: newgeo
+      POSTGRES_PASSWORD: newgeo
+    ports:
+      - "5432:5432"
+    profiles:
+      - infra
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles:
+      - infra
+
+volumes:
+  newgeo_data:
+  newgeo_exports:
+

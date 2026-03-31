@@ -1,0 +1,146 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% chap: problem description %%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Problem Description}\label{chapter:problem}
+
+\section{From Model Output to Data-Conditioned Output}
+
+The practical problem behind this thesis appears when a large language model is placed inside a
+system that retrieves and consumes external information at inference time. In that setting, the
+final answer is no longer determined only by the model parameters. It also depends on what
+documents are available, how they are normalized, which fragments are selected, and how they
+are injected into the prompt or intermediate context.
+
+This changes the engineering question substantially. The task is no longer only to improve the
+base model or choose a better prompt. The task becomes one of controlling and auditing a
+pipeline in which external content can affect:
+\begin{itemize}
+    \item whether a page is mentioned at all;
+    \item how early and how often its terminology appears;
+    \item whether its important facts survive summarization;
+    \item whether unsupported claims are introduced during rewriting;
+    \item whether the resulting output is suitable for publication.
+\end{itemize}
+
+In a generative-search setting, these effects are especially visible. A user may ask a query such
+as ``how to set up distributed tracing,'' and the system will respond with a synthesized answer
+instead of a plain list of links. If one document has a clearer structure, stronger keyword
+coverage, and better contextual support, it is more likely to influence the generated answer.
+Likewise, if a document is rewritten to expose terms and facts more explicitly, its measured
+visibility may increase. This is useful for optimization, but it also creates room for
+over-optimization and manipulation.
+
+\section{Core Challenges}
+
+Designing a practical platform for this environment requires addressing several challenges at the
+same time.
+
+\subsection{Visibility Is Difficult to Observe Directly}
+
+Commercial generative engines are typically closed systems. Their internal ranking logic,
+retrieval stack, prompt construction, and answer synthesis steps are not fully observable.
+Because of that, an engineering platform cannot rely solely on internal model details. It needs
+proxy metrics and repeatable evaluation procedures that approximate how visible a document is
+within generated answers.
+
+\subsection{Optimization Can Damage Meaning}
+
+The simplest way to optimize for visibility is to rewrite content aggressively around keywords,
+headings, and answer-like snippets. However, this can damage the original meaning of the
+source page. Numeric claims can be altered, supporting nuance can disappear, and new claims
+can be invented accidentally. For a trustworthy workflow, optimization must therefore be
+constrained by preserved facts, forbidden claims, and reviewable diffs.
+
+\subsection{External Context Must Be Useful but Read-Only}
+
+Many pages should be improved with the help of surrounding organizational knowledge. For
+example, a setup guide can benefit from a concepts page and a reference page. At the same
+time, that surrounding context should not be silently merged into the source page without
+traceability. The system therefore needs a mechanism for attaching supporting context in a
+read-only manner.
+
+\subsection{Evaluation and Publication Should Be Separated}
+
+Even when an optimization draft appears beneficial, it should not be published automatically.
+The workflow must distinguish between:
+\begin{enumerate}
+    \item measuring the current state;
+    \item generating a recommendation;
+    \item reviewing safety checks and projected lift;
+    \item approving the change;
+    \item exporting the final draft.
+\end{enumerate}
+
+This separation is necessary because the thesis addresses a high-leverage influence surface.
+Once external data can steer an LLM answer, every optimization step should be observable and
+reversible.
+
+\section{System Requirements}
+
+The NewGEO platform was designed around the challenges above. The requirements can be
+grouped into functional and non-functional categories.
+
+\subsection{Functional Requirements}
+
+The system must satisfy the following functional requirements:
+\begin{itemize}
+    \item create and manage projects representing monitored content properties;
+    \item import or crawl pages and preserve normalized content snapshots;
+    \item attach context packs containing briefs, voice rules, supporting documents, and constraints;
+    \item define query clusters so evaluation is organized around realistic information needs;
+    \item execute benchmark runs and persist both aggregate scores and raw run artifacts;
+    \item generate recommendation bundles with rewritten drafts, diffs, rationale, and projected score deltas;
+    \item block approval if critical constraint checks fail;
+    \item export recommendations only after explicit approval, except for a deliberate forced-export path;
+    \item support synchronous execution as well as queued background processing.
+\end{itemize}
+
+\subsection{Non-Functional Requirements}
+
+The platform must also satisfy several non-functional requirements:
+\begin{itemize}
+    \item \textbf{Reproducibility}: the system should run locally without mandatory external services;
+    \item \textbf{Traceability}: important transitions should be stored as explicit models, not implicit side effects;
+    \item \textbf{Extensibility}: storage backends and benchmark connectors should be replaceable behind stable interfaces;
+    \item \textbf{Safety}: recommendation generation should surface risks before publication;
+    \item \textbf{Transparency}: scores and rewrites should be explainable to a reviewer;
+    \item \textbf{Product readiness}: the workflow should be visible through a usable dashboard rather than only through scripts.
+\end{itemize}
+
+These requirements explain several implementation choices in the repository. The current
+system uses deterministic heuristics instead of live engine APIs, JSON and SQLite instead of a
+full database stack, and a polling worker instead of a distributed queue. These decisions reduce
+infrastructure complexity while keeping the architecture open for future replacement.
+
+\section{Operational Scenario}
+
+The intended use of the system can be summarized through the following scenario.
+
+\begin{enumerate}
+    \item A user creates a project representing a documentation site or knowledge base.
+    \item The user imports one or more pages to be monitored and optimized.
+    \item For a target page, the user defines a context pack containing supporting documents, required terminology, locked facts, and forbidden claims.
+    \item The user defines a query cluster that approximates the demand the page should satisfy.
+    \item The system runs a benchmark to estimate how visible the page is under the tracked query cluster.
+    \item The system generates a recommendation draft that restructures the content conservatively and previews the projected score lift.
+    \item A reviewer inspects the rationale, diff, supporting context used, and constraint checks.
+    \item If the draft is acceptable, the reviewer approves it and exports the rewritten markdown.
+\end{enumerate}
+
+This scenario is already implemented in the repository through the service layer, API routes,
+seeded demo, dashboard views, and tests. It therefore serves both as a conceptual use case and
+as the practical basis for the remaining chapters.
+
+\section{Scope of the Current Prototype}
+
+The prototype focuses on the first platform layer needed to study data-driven influence on LLM
+responses. It includes ingestion, normalization, context management, heuristic benchmarking,
+guarded recommendation generation, approval, export, and dashboard presentation. It does not
+yet include production-grade live connectors, vector databases, robust distributed job
+coordination, or direct integration with real content management systems.
+
+This limited scope is intentional. The thesis goal is to demonstrate a coherent and inspectable
+architecture for studying and operationalizing external influence, not to claim a finished
+production deployment. The next chapter presents how this scope is expressed in the system
+architecture.

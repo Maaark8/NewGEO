@@ -1,0 +1,178 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% chap: implementation %%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Implementation and Functionalities}\label{chapter:implementation}
+
+\section{Page Ingestion and Content Normalization}
+
+The first implemented functionality is page acquisition. NewGEO supports direct page import
+and a crawl-oriented ingestion path. In the direct path, a page is imported from markdown,
+title, URL, and content type. In the crawl path, the system accepts seeds and optionally raw
+HTML or markdown payloads associated with URLs.
+
+The ingestion module normalizes URLs, expands crawl seeds conservatively, and can transform
+HTML into readable markdown through an internal parser. Normalized markdown is then stored
+in a \texttt{ContentSnapshot}. The snapshot also receives a lightweight deterministic embedding
+generated from token hashes. This embedding is not intended to compete with production
+semantic encoders, but it is sufficient to validate the retrieval architecture in a fully local
+environment.
+
+This functionality matters because external influence begins with what the system decides the
+page actually is. If raw content is inconsistent, the benchmark and recommendation stages are
+built on unstable input.
+
+\section{Context Packs and Supporting-Document Retrieval}
+
+One of the distinctive functionalities of the application is the context-pack workflow. For a
+target page, the user can attach:
+\begin{itemize}
+    \item a short editorial brief;
+    \item voice rules;
+    \item supporting read-only documents;
+    \item typed constraints.
+\end{itemize}
+
+Supporting documents are ranked through cosine similarity between their embeddings and a
+query embedding derived from the query-cluster text and context brief. The top results are then
+summarized into short contextual notes. In practice, this allows the recommendation engine to
+reuse nearby organizational knowledge without editing those supporting sources directly.
+
+The constraint system supports four types:
+\begin{itemize}
+    \item \texttt{locked\_fact};
+    \item \texttt{forbidden\_claim};
+    \item \texttt{required\_term};
+    \item \texttt{voice\_rule}.
+\end{itemize}
+
+This mechanism is central to the thesis because it turns external data from an uncontrolled
+influence source into a governed one.
+
+\section{Benchmarking Engine}
+
+Benchmarking is implemented through an engine-connector abstraction. The current prototype
+includes three connector modes:
+\begin{itemize}
+    \item a heuristic comparable benchmark connector;
+    \item a non-comparable live spot-check connector;
+    \item an API-preview connector for future external integrations.
+\end{itemize}
+
+The heuristic benchmark connector computes visibility-oriented metrics from properties of the
+candidate page content. These include keyword overlap with the query, early token coverage,
+structural signals such as headings and bullet points, authority-like cues, quote friendliness,
+and a small deterministic noise term. From these signals, the system derives the stored metrics:
+\begin{itemize}
+    \item mention rate;
+    \item citation share;
+    \item answer position;
+    \item token share;
+    \item quote coverage;
+    \item run variance;
+    \item overall score.
+\end{itemize}
+
+Although these metrics are heuristic, they provide a consistent proxy for visibility. This is
+precisely what the prototype needs: a transparent measurement layer that can be executed
+offline and later replaced with real connectors without changing the higher-level workflow.
+
+The live spot-check connector reuses the same general scoring path but marks the run as
+non-comparable and increases the variance slightly. This enforces an important product rule:
+observational checks are useful, but they should not contaminate comparable trend lines.
+
+\section{Recommendation Generation}
+
+Recommendation generation is implemented as a conservative structured rewrite pipeline.
+Instead of paraphrasing the whole source aggressively, the generator assembles a draft with the
+following typical sections:
+\begin{itemize}
+    \item an optional top-level title;
+    \item a ``Quick answer'' block aligned to the primary query cluster;
+    \item a ``Locked facts to preserve'' block;
+    \item a ``Related internal context'' block summarizing supporting documents;
+    \item the original body under ``Suggested page body''.
+\end{itemize}
+
+This choice is deliberate. The goal is to improve surfaceability while minimizing semantic drift.
+The rewrite is therefore closer to structured augmentation than to free-form rewriting.
+
+After the draft is built, the system performs two categories of checks:
+\begin{enumerate}
+    \item explicit constraint evaluation against locked facts, forbidden claims, required terms, and voice rules;
+    \item preservation checks for numeric source claims extracted from the original content.
+\end{enumerate}
+
+The recommendation bundle also contains a unified markdown diff and a preview score
+comparing the baseline page with the projected rewritten page. This enables a reviewer to
+assess potential gain before approving publication.
+
+\section{Approval, Export, and Background Processing}
+
+NewGEO does not treat generated text as automatically publishable. A recommendation can be
+approved only if the generated bundle exists and no failing constraint checks remain. Once a
+recommendation is approved, it can be exported to a markdown file in the configured export
+directory.
+
+This separation between generation and export is one of the most important safety features of
+the system. It acknowledges that optimized content is high-impact and that external influence
+should remain under human supervision.
+
+The worker process extends this workflow by processing queued runs and recommendations in
+the background. At the current stage, the worker uses simple polling, but the interface between
+queued jobs and execution is already explicit. This is a sound basis for future retry logic,
+distributed queues, and richer job observability.
+
+\section{Dashboard Functionalities}
+
+The frontend exposes the implemented workflow through six route-level views:
+\begin{itemize}
+    \item \textbf{Overview}, which summarizes tracked pages, context packs, runs, recommendations, and score trends;
+    \item \textbf{Pages}, which shows the monitored page inventory and attached context-pack status;
+    \item \textbf{Queries}, which lists the query clusters that define measured demand;
+    \item \textbf{Runs}, which exposes benchmark observations and the distinction between comparable and non-comparable runs;
+    \item \textbf{Recommendations}, which presents rationale, confidence, projected lift, and supporting context used;
+    \item \textbf{Compare}, which highlights before/after metrics, constraint checks, diffs, and the generated draft.
+\end{itemize}
+
+These views matter because the thesis is not only about implementing algorithms. It is about
+operationalizing an influence-analysis workflow. The dashboard turns backend records into a
+review surface for human decision-making.
+
+\section{Seed Data, Testing, and Verification}
+
+The repository includes a seeded demo project called \textit{Atlas Docs}. The seed creates one
+project, one tracked page, one context pack, one query cluster, one recommendation, and one
+completed benchmark run. This data serves as a concrete use case for manual exploration and
+for regression-style verification of the main workflow.
+
+Backend tests cover:
+\begin{itemize}
+    \item recommendation generation and locked-fact preservation;
+    \item benchmark execution and artifact persistence;
+    \item approval and export flow;
+    \item crawl-request import behavior;
+    \item storage-backend parity between JSON and SQLite;
+    \item seed and dashboard route behavior.
+\end{itemize}
+
+These tests do not prove the quality of future real-world GEO outcomes, but they do verify
+that the currently implemented workflow behaves consistently and that the main architectural
+contracts are executable.
+
+\section{Current Limitations}
+
+The current implementation deliberately stops short of a production GEO platform. Several
+limitations remain:
+\begin{itemize}
+    \item benchmark connectors are heuristic rather than live commercial integrations;
+    \item embeddings are deterministic hashed vectors rather than semantic encoders;
+    \item crawl execution is payload-friendly and conservative rather than a full web crawler;
+    \item background execution uses polling instead of a distributed queue;
+    \item the frontend is strongest on read-only dashboarding and still lacks full live mutation flows.
+\end{itemize}
+
+These limitations do not invalidate the prototype. Instead, they define the exact contribution of
+the implementation: it is a functioning first platform layer for studying and governing how
+external data can influence LLM responses. That is sufficient for the thesis goal and provides a
+clear basis for future work.

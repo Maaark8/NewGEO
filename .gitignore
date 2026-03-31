@@ -1,0 +1,56 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Secrets and local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# Python cache and tooling artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+.venv/
+venv/
+
+# Node / Next.js artifacts
+node_modules/
+web/node_modules/
+.next/
+web/.next/
+coverage/
+web/coverage/
+*.tsbuildinfo
+
+# Local app data and exports
+.data/
+exports/
+
+# Generic build outputs and logs
+build/
+dist/
+out/
+*.log
+
+GEO
+AutoGEO
+
+AGENTS.md
+DOCUMENTATION.md
+IMPLEMENTATION_PLAN.md

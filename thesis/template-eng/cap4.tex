@@ -1,0 +1,193 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% chap: architecture %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Application Architecture}\label{chapter:architecture}
+
+\section{Architectural Overview}
+
+NewGEO is implemented as a layered monorepo with four main runtime parts:
+\begin{itemize}
+    \item a shared Python domain package in \texttt{packages/newgeo\_core/};
+    \item a FastAPI transport layer in \texttt{api/};
+    \item a polling background worker in \texttt{workers/};
+    \item a Next.js dashboard in \texttt{web/}.
+\end{itemize}
+
+This structure reflects the main design principle of the application: business logic should live
+in the shared service layer, not inside HTTP routes, UI components, or worker-specific code.
+As a result, the API, tests, scripts, and worker all reuse the same orchestration behavior.
+
+\section{Layered Design}
+
+\subsection{Presentation Layer}
+
+The frontend is implemented as a Next.js application with route-based views for overview,
+pages, queries, runs, recommendations, and comparison. The dashboard shell provides a single
+navigation and project-selection frame, while the individual pages expose different slices of the
+same project dashboard state.
+
+The presentation layer does not contain optimization logic. Its responsibility is to show project
+state, benchmark outcomes, recommendation summaries, and review data in a form that is easy
+to inspect. This makes it suitable for human-in-the-loop workflows.
+
+\subsection{Transport Layer}
+
+The API layer exposes the application through HTTP endpoints such as:
+\begin{itemize}
+    \item project creation and dashboard retrieval;
+    \item page import and crawl requests;
+    \item context-pack and query-cluster creation;
+    \item benchmark run creation and artifact retrieval;
+    \item recommendation creation, approval, and export;
+    \item demo seeding.
+\end{itemize}
+
+Each route validates request payloads and delegates to \texttt{NewGeoService}. This keeps the
+transport layer thin and prevents HTTP-specific code from becoming the true domain layer.
+
+\subsection{Domain and Service Layer}
+
+The heart of the application is \texttt{packages/newgeo\_core/newgeo\_core/}. This package
+contains:
+\begin{itemize}
+    \item domain models and enums;
+    \item storage abstractions;
+    \item content normalization utilities;
+    \item retrieval helpers for supporting documents;
+    \item benchmark connectors and metrics;
+    \item recommendation generation and constraint checks;
+    \item the high-level orchestration service.
+\end{itemize}
+
+The service layer is responsible for the full workflow: page ingestion, context-pack creation,
+query-cluster creation, benchmark execution, recommendation generation, approval, export,
+dashboard aggregation, and queued-job processing.
+
+\subsection{Background Execution Layer}
+
+The worker process repeatedly polls the store for queued runs and queued recommendations. If
+it finds any, it executes them using the same service-layer methods used by synchronous API
+calls. Although this worker is intentionally simple, it proves the architectural boundary between
+request submission and deferred execution.
+
+\section{Domain Model}
+
+The application models the optimization workflow through explicit entities rather than implicit
+state transitions.
+
+\subsection{Project and Page Model}
+
+A \texttt{Project} is the top-level monitored entity. It groups all pages, context packs, query
+clusters, runs, and recommendations related to a content property. A \texttt{Page} represents a
+tracked document, while a \texttt{ContentSnapshot} stores the actual normalized body and its
+derived embedding. This separation is useful because a page identity can remain stable while its
+content evolves over time.
+
+\subsection{Context Model}
+
+A \texttt{ContextPack} stores the external information used to guide rewriting. It includes a
+brief, voice rules, supporting documents, and typed constraints. Constraints may represent
+locked facts, forbidden claims, required terms, or voice guidance. This model is the central
+mechanism by which external data influences the recommendation pipeline in a controlled way.
+
+\subsection{Query and Benchmark Model}
+
+A \texttt{QueryCluster} groups related user queries under one topical unit. This is important
+because visibility is query-dependent. A page may perform well for one demand pattern and
+poorly for another.
+
+Each benchmark execution is represented by a \texttt{BenchmarkRun}. The run stores its engine
+name, run type, prompt version, connector configuration, candidate pages, observations, score
+snapshots, and persisted artifacts. Individual scored outcomes are stored as
+\texttt{ScoreSnapshot} records so trends can be reconstructed later.
+
+\subsection{Recommendation and Approval Model}
+
+A generated suggestion is represented by a \texttt{Recommendation}. The actual draft output is
+stored in a \texttt{RecommendationBundle}, which includes rewritten markdown, a markdown
+diff, rationale, confidence, supporting context used, constraint checks, and a preview of
+baseline versus projected benchmark metrics.
+
+Human review is represented explicitly through the \texttt{Approval} model. This keeps the
+publication workflow auditable and avoids silently treating generated text as approved text.
+
+\section{Data Flow}
+
+\subsection{Benchmark Flow}
+
+The benchmark execution flow proceeds as follows:
+\begin{enumerate}
+    \item the user creates a run through the API;
+    \item the service resolves the query cluster and candidate pages;
+    \item a connector is selected based on run type and connector configuration;
+    \item the connector scores candidate pages and returns observations and artifacts;
+    \item the service stores score snapshots and artifact records;
+    \item the dashboard later aggregates these results for visualization.
+\end{enumerate}
+
+This flow is designed so that raw prompt/response material and aggregate metrics are both
+preserved. That separation is important for future debugging and connector replacement.
+
+\subsection{Recommendation Flow}
+
+The recommendation flow is similar, but includes more safety logic:
+\begin{enumerate}
+    \item the user requests a recommendation for one page, one context pack, and one query cluster;
+    \item the service loads the current page snapshot and relevant candidate pages;
+    \item supporting documents are ranked against the query and brief;
+    \item a conservative rewrite draft is assembled;
+    \item constraint checks and source-claim preservation checks are applied;
+    \item the original and projected versions are benchmarked;
+    \item the recommendation bundle is stored for review.
+\end{enumerate}
+
+Approval and export then form a separate downstream stage. This prevents generation from
+being confused with publication.
+
+\section{Storage Architecture}
+
+The storage layer is defined through a \texttt{StorageBackend} protocol with methods for saving,
+loading, listing, and deleting models. Two concrete implementations are available:
+\begin{itemize}
+    \item \texttt{JsonFileBackend}, used as the default local-development store;
+    \item \texttt{SqliteStore}, which persists the same logical collections in a relational table.
+\end{itemize}
+
+The service itself uses a \texttt{JsonStore} compatibility facade that resolves to the selected
+backend. This design choice keeps the service logic stable while allowing local JSON storage,
+SQLite migration, and future replacement with a PostgreSQL-based adapter.
+
+From an architectural standpoint, this is an important compromise. JSON storage keeps the
+prototype frictionless and easy to run. SQLite demonstrates that the service logic can already
+survive a backend swap. The storage protocol therefore acts as a real extension boundary rather
+than a hypothetical one.
+
+\section{Frontend State and Project Awareness}
+
+The frontend resolves a selected project through query parameters and uses that project to load
+the dashboard state. If a live API base URL is not configured, it falls back to sample data. This
+choice allows the interface to remain explorable even before all mutation flows are fully wired.
+
+Architecturally, the UI is therefore ahead of full integration but not disconnected from the real
+backend shape. The route structure, project-aware URLs, dashboard aggregation format, and
+comparison views all follow the live domain model. This makes the current frontend a practical
+product shell rather than a disposable mockup.
+
+\section{Architectural Rationale}
+
+The application architecture is intentionally more modular than a small prototype strictly
+requires. This is justified by the thesis topic itself. Because the system studies how external
+data shapes model outputs, it must make those transformation points visible:
+\begin{itemize}
+    \item content normalization is isolated;
+    \item retrieval of supporting context is isolated;
+    \item benchmark connectors are isolated;
+    \item recommendation generation is isolated;
+    \item approval is isolated from generation;
+    \item persistence is isolated behind a backend protocol.
+\end{itemize}
+
+This separation makes the influence surface inspectable. It also makes the prototype suitable as
+the basis for future connectors, richer storage, stronger semantic checks, and real deployment
+integrations.

@@ -1,0 +1,28 @@
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{AMR{\etalchar{+}}24}
+
+\bibitem[AMR{\etalchar{+}}24]{aggarwal2024geo}
+Pranjal Aggarwal, Vishvak Murahari, Tanmay Rajpurohit, Ashwin Kalyan, Karthik
+  Narasimhan, and Ameet Deshpande.
+\newblock Geo: Generative engine optimization.
+\newblock In {\em Proceedings of the 30th ACM SIGKDD Conference on Knowledge
+  Discovery and Data Mining}, 2024.
+
+\bibitem[GXG{\etalchar{+}}24]{gao2024ragsurvey}
+Yunfan Gao, Yun Xiong, Xinyu Gao, Kangxiang Jia, Jinliu Pan, Yuxi Bi, Yi~Dai,
+  Jiawei Sun, Meng Wang, and Haofen Wang.
+\newblock Retrieval-augmented generation for large language models: A survey.
+\newblock {\em arXiv preprint arXiv:2312.10997}, 2024.
+
+\bibitem[KL24]{kumar2024manipulating}
+Aounon Kumar and Himabindu Lakkaraju.
+\newblock Manipulating large language models to increase product visibility.
+\newblock {\em arXiv preprint arXiv:2404.07981}, 2024.
+
+\bibitem[WZKX25]{wu2025autogeo}
+Yujiang Wu, Shanshan Zhong, Yubin Kim, and Chenyan Xiong.
+\newblock What generative search engines like and how to optimize web content
+  cooperatively.
+\newblock {\em arXiv preprint arXiv:2510.11438}, 2025.
+
+\end{thebibliography}

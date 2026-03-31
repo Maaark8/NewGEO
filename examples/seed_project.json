@@ -1,0 +1,7 @@
+{
+  "name": "Atlas Docs",
+  "base_url": "https://docs.example.com",
+  "description": "Documentation project used by the NewGEO demo flow.",
+  "focus": "docs_articles"
+}
+

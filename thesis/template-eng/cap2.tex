@@ -1,0 +1,127 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% chap: related work %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Related Work}\label{chapter:related_work}
+
+The research area relevant to this thesis sits at the intersection of retrieval-augmented
+generation, generative engine optimization, and robustness against strategic manipulation.
+Together, these directions show that external data is not just supplementary context for large
+language models. It is a control surface that can improve factual grounding, alter visibility,
+change ranking outcomes, and shape the final wording of generated answers.
+
+\section{Retrieval-Augmented Generation as the Influence Surface}
+
+The most general technical foundation for this thesis is retrieval-augmented generation
+(RAG). Gao et al.~\cite{gao2024ragsurvey} describe RAG as a response to three well-known
+limitations of large language models: hallucination, outdated knowledge, and non-transparent
+reasoning. Instead of relying only on information stored in model weights, RAG systems
+retrieve external documents and use them during generation. The survey emphasizes that this
+combination improves accuracy and credibility, especially for knowledge-intensive tasks, while
+also allowing continuous knowledge updates from external databases.
+
+An important contribution of the survey is its organization of the field into Naive RAG,
+Advanced RAG, and Modular RAG paradigms~\cite{gao2024ragsurvey}. This taxonomy is
+useful for the present thesis because it makes clear that influence does not happen at a single
+point. It can arise during retrieval, during augmentation of the prompt context, and during the
+generation step itself. If the retrieval stage misses a relevant page, that page will not influence
+the answer. If augmentation over-prioritizes one document, that document may dominate the
+generated response. If generation compresses the evidence poorly, important facts may be
+omitted even when they were retrieved correctly.
+
+For this reason, RAG literature is directly relevant to the topic of external influence. It shows
+why LLM outputs are sensitive to surrounding data and why document owners can affect the
+model indirectly. However, the survey by Gao et al.~\cite{gao2024ragsurvey} is broad by
+design. It explains how RAG systems work and how they are evaluated, but it does not focus
+on website-side observability, content governance, or approval workflows. Those practical
+concerns are central to this thesis.
+
+\section{Generative Engine Optimization}
+
+Aggarwal et al.~\cite{aggarwal2024geo} formalize the shift from traditional search engines to
+``generative engines,'' systems that retrieve content and synthesize direct answers with large
+language models. Their paper introduces Generative Engine Optimization (GEO) as a
+creator-centric framework for improving how content appears in generated responses. This is a
+key conceptual step because it reframes visibility as more than search ranking. In the GEO
+view, a page can be evaluated by whether it is mentioned, how prominently it is surfaced, and
+how much of its content is retained in the final answer.
+
+The same work also introduces GEO-Bench, a benchmark of user queries and relevant web
+sources designed for systematic evaluation~\cite{aggarwal2024geo}. The authors report that
+their optimization strategies can increase visibility by up to 40\% and note that the effect varies
+across domains. This finding matters for the present thesis in two ways. First, it demonstrates
+that external data can measurably influence LLM-generated responses. Second, it suggests that
+the influence is not uniform: different domains reward different document structures, phrasing
+styles, and evidence patterns.
+
+At the same time, GEO remains primarily a research framework for optimization and
+evaluation. It does not focus on end-user operational concerns such as preserving locked facts,
+requiring explicit approval before export, or presenting benchmark runs inside a product-style
+dashboard. NewGEO builds on the same problem framing, but targets a practical workflow for
+content teams rather than a benchmark-only environment.
+
+\section{Strategic Manipulation of LLM Recommendations}
+
+If GEO highlights the optimization opportunity, the work by Kumar and Lakkaraju
+shows the risk side of the same phenomenon. Their paper demonstrates that an LLM's product
+recommendations can be manipulated through a strategic text sequence (STS) added to a
+product information page~\cite{kumar2024manipulating}. In their experiments with a
+synthetic coffee-machine catalog, the injected sequence substantially increases the probability
+that a target product becomes the top recommendation.
+
+This paper is especially relevant because it makes the mechanism of external influence explicit.
+The model is not retrained and the retrieval system is not replaced. Instead, the input content
+itself is engineered so that the downstream LLM changes its ranking behavior. The authors
+also emphasize robustness by optimizing the injected sequence against variations in the order in
+which product descriptions appear in the prompt~\cite{kumar2024manipulating}. This
+highlights an important insight: once an LLM-based ranking or recommendation system is
+conditioned on external data, even small changes in phrasing can produce large competitive
+effects.
+
+From the perspective of this thesis, the contribution of Kumar and Lakkaraju is not that it
+provides a deployment model to follow. On the contrary, it serves as evidence that any system
+for GEO must distinguish between legitimate optimization and manipulative prompt shaping.
+That distinction motivates the guarded design of NewGEO, where recommendations are paired
+with constraint checks and a human approval step.
+
+\section{Cooperative Optimization and Preference Learning}
+
+More recent work pushes GEO beyond hand-written heuristics. Wu et al.~\cite{wu2025autogeo}
+propose AutoGEO, a framework that learns generative-engine preference rules automatically
+and uses them to rewrite documents. Their approach extracts preference rules from model
+explanations, then applies those rules in two ways: as prompt context for a frontier-model
+rewriter and as reward signals for a smaller trained model. This is important because it shifts
+the research direction from manually selected optimization cues toward learned, engine-specific
+rewriting behavior.
+
+AutoGEO also introduces a more cooperative framing of optimization. Instead of evaluating
+only visibility, the paper considers generative engine utility as well, asking whether rewriting
+preserves response quality and reliability~\cite{wu2025autogeo}. The authors report an average
+improvement of 35.99\% in GEO metrics while maintaining utility, and they observe that
+different engines and domains prefer different rules. This directly supports one of the core
+assumptions behind NewGEO: external influence should not be optimized blindly. It should be
+measured against both visibility gains and semantic preservation.
+
+Even so, AutoGEO remains focused on model-centric rewriting pipelines and benchmark
+evaluation. It does not address the full operational lifecycle needed by a product team:
+managing tracked pages, storing snapshots, defining query clusters, preserving locked facts,
+approving recommendations, and exporting reviewed drafts. These are precisely the system-level
+concerns that this thesis emphasizes.
+
+\section{Positioning of the Thesis}
+
+Taken together, the reviewed literature establishes four important points. First,
+retrieval-augmented generation makes external knowledge a decisive part of the LLM response
+process~\cite{gao2024ragsurvey}. Second, GEO research shows that content can be optimized to
+gain visibility in generative answers~\cite{aggarwal2024geo}. Third, adversarial experiments
+show that the same surface can be manipulated for competitive advantage~\cite{kumar2024manipulating}.
+Fourth, newer work argues that optimization should be cooperative and utility-preserving, not
+merely visibility-seeking~\cite{wu2025autogeo}.
+
+The gap addressed by this thesis is practical and architectural. Existing work demonstrates that
+external data can influence LLM outputs, but it leaves open how a real system should expose
+that process to users in a controlled workflow. NewGEO answers this gap by providing an
+inspectable platform where content can be imported, benchmarked, rewritten with supporting
+context, validated against constraints, reviewed by a human, and exported only after approval.
+In this sense, the thesis translates current GEO research into a concrete software architecture
+for responsible experimentation.

@@ -1,0 +1,108 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% cap: intro %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\chapter{Introduction}\label{cap:intro}
+
+\section{Motivation}\label{sect:motivation}
+
+Large language models are no longer used only as standalone text generators that answer from
+their parametric memory. In modern assistants and AI search systems, the model is commonly
+connected to external sources such as retrieved web pages, internal knowledge bases, product
+catalogs, documentation fragments, and manually assembled context windows. Once that
+happens, the final response is shaped not only by the model weights, but also by the content
+that is retrieved, selected, ranked, summarized, and injected into the prompt at inference time.
+
+This thesis refers to that steering effect as ``puppeteering'' in a technical sense: an external
+actor can influence an LLM response by changing the surrounding data without retraining the
+model itself. The term is intentionally provocative, but the phenomenon is not necessarily
+malicious. A documentation team may rewrite a page so that a model cites it more accurately.
+An internal knowledge engineering team may add supporting context to reduce hallucinations.
+At the same time, a vendor may insert strategically crafted text to push a product higher in
+LLM-generated recommendations. The same mechanism therefore enables both legitimate
+optimization and problematic manipulation.
+
+This problem becomes especially important in generative search. Traditional search engines
+mainly return ranked lists of links. Generative engines instead synthesize a direct answer,
+usually grounded in a small set of retrieved sources that are quoted, paraphrased, or
+prioritized by the model. As a result, content visibility is no longer measured only by whether a
+page appears in search results, but also by whether it is surfaced inside the generated answer,
+how prominently it appears, and whether its important facts survive summarization. For
+content owners, the optimization surface becomes harder to observe. For users, the difference
+between well-grounded evidence and carefully engineered phrasing becomes less obvious.
+
+From an engineering perspective, the problem is practical as well as conceptual. Teams need
+tools that can measure how pages are represented in generated answers, compare versions of
+content, protect factual constraints, and keep a human reviewer in the loop. The repository
+developed alongside this thesis addresses that need through \textit{NewGEO}, a prototype
+platform for monitoring visibility, generating context-aware recommendations, and validating
+content changes before export.
+
+\section{Problem Statement and Research Questions}
+
+The central problem addressed in this thesis is how externally supplied data influences the
+content, position, and credibility of LLM responses, and how this influence can be measured
+and operationalized in a safe software workflow.
+
+The thesis is guided by the following research questions:
+\begin{itemize}
+    \item How does retrieved or injected external content affect what an LLM mentions, cites, or recommends?
+    \item How can this influence be measured in a repeatable way when direct access to proprietary generative engines is limited?
+    \item How can optimization suggestions be generated without losing locked facts or introducing semantic drift?
+    \item What system architecture is needed to combine benchmarking, guarded rewriting, human approval, and export in a single workflow?
+\end{itemize}
+
+These questions position the thesis at the intersection of retrieval-augmented generation,
+generative engine optimization, and trustworthy content engineering. The goal is not to
+reverse-engineer a specific commercial model. Instead, the goal is to build an inspectable
+platform that makes the influence surface visible, measurable, and reviewable.
+
+\section{Objectives and Proposed Approach}
+
+To answer these questions, the thesis develops a practical software system called
+\textit{NewGEO}. The system models the content optimization workflow around a small set of
+core entities: projects, tracked pages, content snapshots, context packs, query clusters,
+benchmark runs, score snapshots, and recommendations. This makes it possible to move from
+an abstract discussion about external influence to an executable end-to-end pipeline.
+
+The proposed approach has five main stages:
+\begin{enumerate}
+    \item ingest and normalize target pages, either directly or through a crawl-oriented import flow;
+    \item define external context through supporting documents, locked facts, required terms, and forbidden claims;
+    \item group representative user queries into query clusters and benchmark candidate pages against those queries;
+    \item generate context-aware recommendation drafts and estimate their projected visibility lift;
+    \item require explicit human approval before exporting optimized content.
+\end{enumerate}
+
+This design reflects an important thesis position. External influence on LLM outputs should not
+be treated only as an offensive optimization technique. It should also be treated as an
+observable and testable software process. Consequently, NewGEO separates measurement,
+rewriting, and publication instead of collapsing them into a single opaque step.
+
+\section{Author Contributions}
+
+The main contributions of the thesis are the following:
+\begin{itemize}
+    \item the design of a modular architecture that separates domain logic, HTTP transport, background processing, and dashboard presentation;
+    \item the implementation of an end-to-end backend workflow for page ingestion, context-pack creation, query clustering, benchmark execution, recommendation generation, approval, and export;
+    \item a transparent heuristic benchmarking engine that approximates visibility through metrics such as mention rate, citation share, answer position, token share, quote coverage, and run variance;
+    \item a constraint-aware recommendation pipeline that preserves locked facts, highlights required terms, ranks supporting documents, and checks for possible semantic drift;
+    \item a web dashboard that exposes the workflow as an operational product rather than as a standalone research script;
+    \item automated tests for the main service flow, including recommendation generation, benchmarking, crawling, approval, export, and storage backend parity.
+\end{itemize}
+
+The current implementation uses deterministic heuristics instead of live commercial LLM APIs.
+This is an intentional choice. It keeps the platform reproducible in a local environment and
+allows the influence of external data to be studied without hiding core behavior inside opaque
+third-party services. At the same time, the architecture leaves clear extension points for future
+integration with real connectors and richer retrieval backends.
+
+\section{Thesis Structure}
+
+The remainder of the thesis is organized as follows. Chapter~\ref{chapter:related_work}
+reviews the literature on retrieval-augmented generation, generative engine optimization,
+strategic manipulation of LLM-based recommendations, and cooperative content rewriting.
+The following chapters describe the problem framing for NewGEO, the application
+architecture, the implementation details of the platform, and the experimental workflow used
+to benchmark and validate the prototype. The thesis concludes with the main findings,
+limitations, and directions for future work.

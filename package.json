@@ -1,0 +1,14 @@
+{
+  "name": "newgeo",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev:web": "cd web && npm run dev",
+    "dev:api": "PYTHONPATH=packages/newgeo_core uvicorn api.app.main:app --reload",
+    "dev:worker": "PYTHONPATH=packages/newgeo_core python3 -m workers.app.worker",
+    "test:py": "PYTHONPATH=packages/newgeo_core python3 -m unittest discover -s api/tests -v"
+  }
+}
+

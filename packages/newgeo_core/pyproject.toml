@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "newgeo-core"
+version = "0.1.0"
+description = "Shared domain logic for the NewGEO platform."
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2,<3"]
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+
